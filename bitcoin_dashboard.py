@@ -40,42 +40,58 @@ data_file = st.sidebar.file_uploader("Upload Bitcoin CSV File", type=["csv"])
 if data_file:
     data = load_bitcoin_data(data_file)
     st.success("Data loaded successfully!")
-    
-    # Tabs for different analyses
-    tabs = st.tabs(["Data Overview", "Visualizations", "Machine Learning"])
 
-    # Data Overview Tab
-    with tabs[0]:
-        st.subheader("Descriptive Statistics")
-        st.write(data.describe())
+    # Date range selection
+    st.sidebar.subheader("Select Date Range")
+    start_date = st.sidebar.date_input("Start Date", value=data.index.min())
+    end_date = st.sidebar.date_input("End Date", value=data.index.max())
 
-    # Visualization Tab
-    with tabs[1]:
-        st.subheader("Interactive Visualizations")
-        # Price trend visualization
-        fig = px.line(data, x=data.index, y="close", title="Bitcoin Price Trend", labels={"x": "Date", "close": "Bitcoin Price (USD)"})
-        st.plotly_chart(fig)
+    # Ensure valid date range
+    if start_date > end_date:
+        st.error("Start Date must be before End Date.")
+    else:
+        filtered_data = data[(data.index >= pd.Timestamp(start_date)) & (data.index <= pd.Timestamp(end_date))]
 
-        # Correlation heatmap (exclude non-numeric columns)
-        numeric_data = data.select_dtypes(include=[np.number])  # Select only numeric columns
-        numeric_data = numeric_data.dropna()  # Drop rows with NaN values
-        corr_matrix = numeric_data.corr()  # Compute correlation matrix
-        heatmap = px.imshow(corr_matrix, text_auto=True, title="Correlation Heatmap")
-        st.plotly_chart(heatmap)
+        if filtered_data.empty:
+            st.warning("No data available for the selected date range.")
+        else:
+            st.success("Data filtered successfully!")
 
-    # Machine Learning Tab
-    with tabs[2]:
-        st.subheader("Machine Learning Model")
-        model, mse, X_test, y_test, predictions = train_ml_model(data)
+            # Tabs for different analyses
+            tabs = st.tabs(["Data Overview", "Visualizations", "Machine Learning"])
 
-        # Display model performance
-        st.write(f"Mean Squared Error: {mse:.2f}")
+            # Data Overview Tab
+            with tabs[0]:
+                st.subheader("Descriptive Statistics")
+                st.write(filtered_data.describe())
 
-        # Prediction Visualization
-        prediction_fig = go.Figure()
-        prediction_fig.add_trace(go.Scatter(x=X_test.index, y=y_test, mode='lines', name='Actual'))
-        prediction_fig.add_trace(go.Scatter(x=X_test.index, y=predictions, mode='lines', name='Predicted'))
-        prediction_fig.update_layout(title="Actual vs Predicted Prices", xaxis_title="Date", yaxis_title="Price")
-        st.plotly_chart(prediction_fig)
+            # Visualization Tab
+            with tabs[1]:
+                st.subheader("Interactive Visualizations")
+                # Price trend visualization
+                fig = px.line(filtered_data, x=filtered_data.index, y="close", title="Bitcoin Price Trend", labels={"x": "Date", "close": "Bitcoin Price (USD)"})
+                st.plotly_chart(fig)
+
+                # Correlation heatmap (exclude non-numeric columns)
+                numeric_data = filtered_data.select_dtypes(include=[np.number])  # Select only numeric columns
+                numeric_data = numeric_data.dropna()  # Drop rows with NaN values
+                corr_matrix = numeric_data.corr()  # Compute correlation matrix
+                heatmap = px.imshow(corr_matrix, text_auto=True, title="Correlation Heatmap")
+                st.plotly_chart(heatmap)
+
+            # Machine Learning Tab
+            with tabs[2]:
+                st.subheader("Machine Learning Model")
+                model, mse, X_test, y_test, predictions = train_ml_model(filtered_data)
+
+                # Display model performance
+                st.write(f"Mean Squared Error: {mse:.2f}")
+
+                # Prediction Visualization
+                prediction_fig = go.Figure()
+                prediction_fig.add_trace(go.Scatter(x=X_test.index, y=y_test, mode='lines', name='Actual'))
+                prediction_fig.add_trace(go.Scatter(x=X_test.index, y=predictions, mode='lines', name='Predicted'))
+                prediction_fig.update_layout(title="Actual vs Predicted Prices", xaxis_title="Date", yaxis_title="Price")
+                st.plotly_chart(prediction_fig)
 else:
     st.info("Please upload a Bitcoin CSV file to begin.")
