@@ -75,6 +75,7 @@ def generate_excel_report(data, mse, future_predictions):
     return output
 
 # Function to load Bitcoin price data from a CSV file
+@st.cache_data
 def load_bitcoin_data(file_path):
     df = pd.read_csv(file_path)
     df['Date'] = pd.to_datetime(df['Date'], format="%Y-%m-%d %H:%M:%S", errors='coerce')
@@ -83,6 +84,7 @@ def load_bitcoin_data(file_path):
     return df
 
 # Machine Learning Model Implementation
+@st.cache_resource
 def train_ml_model(data):
     data['Lagged_Price'] = data['close'].shift(1)
     data = data.dropna()
